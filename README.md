@@ -1,44 +1,38 @@
 # Local AI Photo Cleaner
 
-A 100% private, offline photo sorting tool that separates genuine personal/family memories from WhatsApp clutter (screenshots, receipts, utility bills, memes, e-commerce catalog shots) using local vision models via **Ollama**.
+A 100% private, offline photo sorting tool that categorizes photo dumps into **3 clean tiers** using local vision models via **Ollama**.
 
 ---
 
-## ⚡ The Core Problem It Solves
+## 🎯 3-Tier Destination Routing
 
-Standard vision prompts fail on real-world photo dumps because:
-1. **The Sunglasses / Candid Trap:** Models often think a child in sunglasses or a casual selfie is a "stock model photo".
-2. **The Household Object Trap:** A child holding a branded bag or toy triggers "commercial product" rules.
-3. **The Event Decoration Trap:** Stage floral decorations or convocation gowns look like "promotional advertisements".
+When given a photo directory, it organizes your files into 3 distinct places:
 
-This tool uses a **2-Stage Hierarchical Decision Pipeline** calibrated to prioritize family life and natural human moments above all else.
+| Tier / Location | What goes here | Examples |
+|---|---|---|
+| **`Main Folder`** | **Confident Personal Memories** | Family life, kids, selfies, dining, vacations, pets, celebrations |
+| **`_Review_Needed/`** | **50-50 Borderline Photos** | Certificates in hand, mixed text/scenes, ambiguous candidate forwards |
+| **`_Unwanted_Archive/`** | **Confirmed Junk** | Digital screenshots, bills, receipts, furniture catalog shots, ads, memes |
 
 ---
 
-## 🧠 How the Algorithm Works
+## 🧠 Decision Flowchart
 
 ```
-                     [New Photo]
-                          │
-                          ▼
-            [Stage 1: Real Person Detection]
-     "Is there a real human person in this photo?"
-                          │
-         ┌────────────────┴────────────────┐
-         │ NO                              │ YES
-         ▼                                 ▼
-[UNWANTED ARCHIVE]         [Stage 2: Ad & Meme Filter]
-- Digital screenshots       "Is this an official commercial flyer
-- Receipts & invoices        or a movie/TV scene with subtitles?"
-- Catalog product shots                    │
-                            ┌──────────────┴──────────────┐
-                            │ YES                         │ NO
-                            ▼                             ▼
-                   [UNWANTED ARCHIVE]               [KEEP / MAIN]
-                   - Marketing ads                  - Family moments
-                   - Video memes                    - Kids & babies
-                                                    - Candid selfies
-                                                    - Travel & dining
+                             [Photo]
+                                │
+                                ▼
+                  [1. Is there a real person?]
+                                │
+               ┌────────────────┴────────────────┐
+               │ NO                              │ YES
+               ▼                                 ▼
+   [2. Clear document/catalog?]      [3. Commercial ad or movie meme?]
+         ┌─────┴─────┐                     ┌─────┴─────┐
+     YES │       NO  │                 YES │       NO  │
+         ▼           ▼                     ▼           ▼
+   [_Unwanted]   [_Review]           [_Unwanted]    [KEEP / MAIN]
+   (Receipts)   (Landscapes)         (Ads/Memes)   (Family/Life)
 ```
 
 ---
@@ -75,7 +69,8 @@ python cleaner.py --source "/path/to/your/photos" --workers 4 --model llava
 | Flag | Default | Description |
 |---|---|---|
 | `--source` | *Required* | Path to the photo folder to clean |
-| `--archive-dir` | `_Unwanted_Archive` | Name of the folder to move junk into |
+| `--review-dir` | `_Review_Needed` | Name of the folder for 50-50 borderline photos |
+| `--archive-dir` | `_Unwanted_Archive` | Name of the folder for confirmed junk files |
 | `--model` | `llava` | Local vision model on Ollama (`llava`, `qwen2-vl:7b`, etc.) |
 | `--workers` | `4` | Number of concurrent worker threads |
 | `--timeout` | `15.0` | Per-photo inference timeout (seconds) |
@@ -83,6 +78,6 @@ python cleaner.py --source "/path/to/your/photos" --workers 4 --model llava
 ---
 
 ## 🛡️ Safety Guarantees
-- **Non-destructive:** Zero photos deleted. All unwanted files are moved safely.
+- **Non-destructive:** Zero photos deleted. All moves are safely isolated.
 - **Collision Protection:** Automatically renames duplicates (`img_1.jpg`, `img_2.jpg`).
-- **100% Offline:** Runs locally via Ollama. No API keys, no internet connection required.
+- **100% Offline:** Runs locally via Ollama. No API keys, no cloud upload.
