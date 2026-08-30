@@ -1,12 +1,12 @@
 # Local AI Photo Cleaner
 
-A 100% private, offline photo sorting tool that categorizes photo dumps into **3 clean tiers** using local vision models via **Ollama**.
+A 100% private, offline photo sorting tool that categorizes WhatsApp photo dumps into **3 clean tiers** using local vision models via **Ollama**.
 
 ---
 
 ## 🎯 3-Tier Destination Routing
 
-When given a photo directory, it organizes your files into 3 distinct places:
+When given a photo directory, it automatically organizes your files into 3 distinct places:
 
 | Tier / Location | What goes here | Examples |
 |---|---|---|
@@ -37,34 +37,33 @@ When given a photo directory, it organizes your files into 3 distinct places:
 
 ---
 
-## 🚀 Quick Start
+## 🚀 1-Click Run (Turnkey)
 
-### 1. Prerequisites
-- **Ollama:** [Download Ollama](https://ollama.com) or `brew install ollama`
-- **Vision Model:**
-  ```bash
-  ollama pull llava
-  ```
+Clone and run `./run.sh`. It automatically handles:
+1. Installing Ollama (if missing)
+2. Starting the Ollama background service
+3. Pulling the `llava` vision model (~4.5 GB)
+4. Setting up Python environment & dependencies
+5. Sorting your photos
 
-### 2. Installation
 ```bash
-git clone https://github.com/your-username/local-photo-cleaner.git
+git clone https://github.com/meherjammula/local-photo-cleaner.git
 cd local-photo-cleaner
-pip install -r requirements.txt
-```
 
-### 3. Usage
-```bash
-# Basic run
-python cleaner.py --source "/path/to/your/photos"
-
-# Fast parallel run (4 workers on Apple Silicon GPU)
-python cleaner.py --source "/path/to/your/photos" --workers 4 --model llava
+# 1-Click Run:
+./run.sh --source "/path/to/your/photos"
 ```
 
 ---
 
-## ⚙️ CLI Options
+## 💻 Manual CLI Usage
+
+```bash
+pip install -r requirements.txt
+python cleaner.py --source "/path/to/your/photos" --workers 4
+```
+
+### CLI Options
 
 | Flag | Default | Description |
 |---|---|---|
@@ -77,7 +76,16 @@ python cleaner.py --source "/path/to/your/photos" --workers 4 --model llava
 
 ---
 
+## 🐳 Docker Usage
+
+```bash
+# Put photos inside ./photos, then run:
+docker compose up
+```
+
+---
+
 ## 🛡️ Safety Guarantees
 - **Non-destructive:** Zero photos deleted. All moves are safely isolated.
 - **Collision Protection:** Automatically renames duplicates (`img_1.jpg`, `img_2.jpg`).
-- **100% Offline:** Runs locally via Ollama. No API keys, no cloud upload.
+- **100% Offline:** Runs locally via Ollama. No API keys, zero cloud uploads.

@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  photo-cleaner:
+    build: .
+    volumes:
+      # Mount your host photo directory into /photos
+      - ./photos:/photos
+      # Persist downloaded LLM weights
+      - ollama_models:/root/.ollama
+    command: ["--source", "/photos"]
+
+volumes:
+  ollama_models:
