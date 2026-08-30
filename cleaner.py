@@ -6,7 +6,7 @@ Private, 3-tier offline photo sorting tool using Ollama vision models.
 Routing Tiers:
 1. Main Folder: Confident personal memories (family, kids, selfies, events).
 2. _Review_Needed: 50-50 borderline / ambiguous photos (certificates in hand, mixed text/scenes).
-3. _Unwanted_Archive: Confirmed junk (screenshots, receipts, catalog products, ads, memes).
+3. _Unwanted_Archive: Confirmed junk (screenshots, receipts, catalog products, fashion models, ads, memes).
 """
 
 import argparse
@@ -40,19 +40,19 @@ def safe_move(src: Path, dest_dir: Path):
     shutil.move(str(src), str(target))
 
 def evaluate_photo(img_path: Path, client: ollama.Client, model: str) -> str:
-    """3-Tier Decision Logic:
+    """Precision 3-Tier Decision Logic:
     - KEEP (Main folder)
     - REVIEW (_Review_Needed)
     - UNWANTED (_Unwanted_Archive)
     """
     img_bytes = preprocess_image(img_path)
 
-    # Question 1: Is there a real person?
+    # Check 1: Does photo show a real person as the main subject?
     res1 = client.chat(
         model=model,
         messages=[{
             "role": "user",
-            "content": "Is there a real human person in this photo? Answer YES or NO first.",
+            "content": "Does this photo show a real person (face, portrait, selfie, family, child)? Answer YES if a real person or child is the subject of the photo. Answer NO if the main subject is an object, product, paper plate, food item, or document where only a hand/finger is holding it.",
             "images": [img_bytes]
         }],
         options={"temperature": 0.0},
@@ -62,7 +62,7 @@ def evaluate_photo(img_path: Path, client: ollama.Client, model: str) -> str:
     has_person = ans1.startswith("YES") or "YES," in ans1 or "YES " in ans1 or "YES." in ans1
 
     if not has_person:
-        # Check if clear junk vs potential landmark/scenery
+        # Check if pure document/screenshot/catalog vs natural landscape/milestone
         res_junk = client.chat(
             model=model,
             messages=[{
@@ -78,21 +78,21 @@ def evaluate_photo(img_path: Path, client: ollama.Client, model: str) -> str:
             return "UNWANTED"
         return "REVIEW"
 
-    # If real person is present, check if commercial ad graphic or movie scene
+    # Check 2: If a person is present, filter out fashion catalog models or commercial ads
     res2 = client.chat(
         model=model,
         messages=[{
             "role": "user",
-            "content": "Is this an official commercial advertisement graphic with marketing logos/discounts, or a movie scene with subtitles? Answer YES, NO, or MAYBE.",
+            "content": "Is this image an e-commerce clothing catalog model (staged fashion model posing on seamless studio background), or a commercial marketing ad graphic? Answer YES if it is a clothing catalog model or commercial ad. Answer NO if it is a real candid personal/family photo, selfie, kid photo, or home moment.",
             "images": [img_bytes]
         }],
         options={"temperature": 0.0},
         keep_alive="10m"
     )
     ans2 = res2["message"]["content"].strip().upper()
-    if ans2.startswith("YES") or "YES," in ans2 or "YES " in ans2:
+    if ans2.startswith("YES") or "YES," in ans2 or "YES " in ans2 or "YES." in ans2:
         return "UNWANTED"
-    elif "MAYBE" in ans2 or "UNCERTAIN" in ans2 or "COULD BE" in ans2:
+    elif "MAYBE" in ans2 or "UNCERTAIN" in ans2:
         return "REVIEW"
 
     return "KEEP"
@@ -132,7 +132,6 @@ def main():
     archive_path.mkdir(parents=True, exist_ok=True)
     review_path.mkdir(parents=True, exist_ok=True)
 
-    # Scan only top-level files in source (skip the two subfolders)
     images = [
         f for f in source_path.iterdir()
         if f.is_file() and f.suffix.lower() in VALID_EXTS and not f.name.startswith(".")
