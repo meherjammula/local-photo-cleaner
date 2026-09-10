@@ -22,6 +22,9 @@ from tqdm import tqdm
 
 VALID_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".bmp"}
 
+SCREENSHOT_REGEX = re.compile(r"^(Screenshot|Screen\s*Shot|Screen_Shot|Screenshot_)", re.IGNORECASE)
+DUP_REGEX = re.compile(r"^(.*?)(?:\s*\(\d+\)|\s*-\s*Copy)(\.[^.]+)$", re.IGNORECASE)
+
 def preprocess_image(image_path: Path, max_size: int = 768) -> bytes:
     """Downscale photo to optimize vision inference latency."""
     with Image.open(image_path) as img:
@@ -32,12 +35,14 @@ def preprocess_image(image_path: Path, max_size: int = 768) -> bytes:
 
 def safe_move(src: Path, dest_dir: Path):
     """Move file with duplicate collision protection."""
+    dest_dir.mkdir(parents=True, exist_ok=True)
     target = dest_dir / src.name
     counter = 1
     while target.exists():
         target = dest_dir / f"{src.stem}_{counter}{src.suffix}"
         counter += 1
     shutil.move(str(src), str(target))
+
 
 def evaluate_photo(img_path: Path, client: ollama.Client, model: str) -> str:
     """Precision 3-Tier Decision Logic:
@@ -131,32 +136,68 @@ def main():
 
     archive_path.mkdir(parents=True, exist_ok=True)
     review_path.mkdir(parents=True, exist_ok=True)
+    dup_path = source_path / "_Duplicates_Archive"
 
-    images = [
+    all_files = [
         f for f in source_path.iterdir()
         if f.is_file() and f.suffix.lower() in VALID_EXTS and not f.name.startswith(".")
     ]
 
-    total = len(images)
     print(f"📁 Main Photo Library:  {source_path}")
     print(f"📦 Archive Subfolder:   {archive_path}")
     print(f"🔍 Review Subfolder:    {review_path}")
+    print(f"👯 Duplicates Folder:   {dup_path}")
     print(f"🧠 Vision Model:        {args.model}")
-    print(f"🖼️  Photos Found:        {total}\n")
+    print(f"🖼️  Photos Found:        {len(all_files)}\n")
+
+    # PRE-FLIGHT 1: Instant Fast Screenshot Filter (No GPU needed)
+    screenshot_moved = 0
+    remaining_files = []
+    for f in all_files:
+        if SCREENSHOT_REGEX.search(f.name):
+            safe_move(f, archive_path)
+            screenshot_moved += 1
+        else:
+            remaining_files.append(f)
+
+    if screenshot_moved > 0:
+        print(f"⚡ Pre-flight: Moved {screenshot_moved} screenshots directly to {archive_path.name}")
+
+    # PRE-FLIGHT 2: Instant Fast Duplicate Suffix Isolation
+    dup_moved = 0
+    name_map = {f.name: f for f in remaining_files}
+    vision_candidates = []
+    for f in remaining_files:
+        m = DUP_REGEX.match(f.name)
+        if m:
+            base_name = m.group(1) + m.group(2)
+            if base_name in name_map and base_name != f.name:
+                dup_path.mkdir(parents=True, exist_ok=True)
+                safe_move(f, dup_path)
+                dup_moved += 1
+                continue
+        vision_candidates.append(f)
+
+    if dup_moved > 0:
+        print(f"⚡ Pre-flight: Isolated {dup_moved} duplicate copies to {dup_path.name}")
+
+    total = len(vision_candidates)
+    print(f"\n🚀 Running AI Vision Model on {total} remaining photos...\n")
 
     if total == 0:
-        print("No photos to process.")
+        print("All photos classified by pre-flight filters. Done.")
         return
 
     client = ollama.Client(timeout=args.timeout)
 
     kept_count = 0
     review_count = 0
-    unwanted_count = 0
+    unwanted_count = screenshot_moved
     error_count = 0
 
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        futures = {executor.submit(process_file, img, archive_path, review_path, client, args.model): img for img in images}
+        futures = {executor.submit(process_file, img, archive_path, review_path, client, args.model): img for img in vision_candidates}
+
         with tqdm(total=total, desc="Sorting photos") as pbar:
             for future in as_completed(futures):
                 path, result = future.result()
