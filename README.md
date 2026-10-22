@@ -80,6 +80,26 @@ Your_Photos_Folder/
 
 ---
 
+## 🧠 AI Vision Models & Hardware Scaling Guide
+
+By default, the tool runs **`mlx-community/Qwen2.5-VL-3B-Instruct-4bit`**, which is optimized for high-speed local inference across all Apple Silicon Macs.
+
+If you have a high-spec Mac (16 GB, 24 GB, 36 GB, 48 GB, or 64 GB Unified Memory), you can switch models anytime:
+
+| Model | Parameters | 4-bit Size | Recommended Mac RAM | Command Example |
+| :--- | :--- | :--- | :--- | :--- |
+| **Qwen2.5-VL-3B** *(Default)* | **3 Billion** | **~2.9 GB** | **8 GB – 16 GB** (Air / Pro) | `./run.sh` *(Default)* |
+| **Qwen2.5-VL-7B** *(Pro / Studio)* | **7 Billion** | **~5.2 GB** | **16 GB – 48 GB+** (Pro / Max) | `python3 cleaner.py --source /path --model mlx-community/Qwen2.5-VL-7B-Instruct-4bit` |
+| **Qwen2.5-VL-72B** *(Ultra Studio)* | **72 Billion** | **~42 GB** | **64 GB – 128 GB+** (Max / Ultra) | `python3 cleaner.py --source /path --model mlx-community/Qwen2.5-VL-72B-Instruct-4bit` |
+
+### 💡 Why Qwen2.5-VL vs. Llama 3.2 Vision?
+While Llama 3.2 Vision (11B) is also open, **Qwen2.5-VL** is specifically superior for photo curation because:
+1. **Dynamic Native Resolution**: Qwen processes photos at their true aspect ratio without arbitrarily slicing them into square tiles.
+2. **Fine Facial Nuance & OCR**: Qwen2.5-VL-7B significantly outperforms Llama 3.2 in detecting subtle micro-blinks, direct eye-contact angles, and fine document receipts.
+3. **Optimized Apple Silicon MLX Kernels**: Runs natively on Apple Metal GPU at 60–100+ tokens/second.
+
+---
+
 ## 🛠️ Advanced CLI Usage
 
 If you prefer using the command line directly:
