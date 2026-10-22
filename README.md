@@ -68,9 +68,11 @@ Your_Photos_Folder/
 - Everything runs 100% locally on your machine.
 - Zero network calls. Your family photos and documents never touch any remote server or cloud.
 
-### 3. Industrial Scale (250 GB – 500 GB)
-- Built on a high-concurrency **SQLite WAL Checkpoint engine**.
-- If your laptop sleeps, runs out of battery, or you close the app, running it again **resumes instantly** without re-scanning already processed files.
+### 3. Industrial Scale (250 GB – 500 GB) & Live Monitoring
+- **SQLite WAL Checkpoint Engine**: If your laptop sleeps, runs out of battery, or you close the app, running it again **resumes instantly** without re-scanning already processed files.
+- **Mac Desktop Notifications**: Sends native macOS notification banners at key milestones (25%, 50%, 75%, 100%) and every 15 minutes with speed & time remaining.
+- **Live `progress_summary.txt` in Finder**: You don't have to keep staring at the terminal. You can simply look inside your photo folder in Finder to see real-time scanned counts, speeds, and ETA.
+- **Completion Chime**: Plays a gentle Mac chime when all 500 GB are fully curated.
 
 ### 4. 100% Non-Destructive with 1-Click Rollback
 - No files are ever permanently deleted.

@@ -136,6 +136,78 @@ class CheckpointDB:
 # ---------------------------------------------------------------------------
 # Perceptual & Deterministic Heuristics
 # ---------------------------------------------------------------------------
+def send_mac_notification(title: str, subtitle: str, message: str):
+    """Trigger a native macOS system desktop notification banner."""
+    try:
+        if sys.platform == "darwin":
+            clean_msg = message.replace('"', '\\"')
+            clean_sub = subtitle.replace('"', '\\"')
+            clean_title = title.replace('"', '\\"')
+            cmd = f"""osascript -e 'display notification "{clean_msg}" with title "{clean_title}" subtitle "{clean_sub}"' 2>/dev/null &"""
+            os.system(cmd)
+    except Exception:
+        pass
+
+
+def play_completion_chime():
+    """Play a gentle Mac system sound upon completion."""
+    try:
+        if sys.platform == "darwin" and os.path.exists("/System/Library/Sounds/Glass.aiff"):
+            os.system("afplay /System/Library/Sounds/Glass.aiff &")
+    except Exception:
+        pass
+
+
+def update_live_progress_file(output_dir: Path, total: int, processed: int, counts: dict, elapsed_sec: float):
+    """Write human-readable progress summary and JSON to disk for easy monitoring."""
+    pct = (processed / total * 100.0) if total > 0 else 100.0
+    speed = (processed / elapsed_sec) if elapsed_sec > 0 else 0.0
+    rem_items = max(0, total - processed)
+    rem_sec = (rem_items / speed) if speed > 0 else 0.0
+    rem_mins = rem_sec / 60.0
+
+    summary_text = f"""======================================================================
+📸 LOCAL AI PHOTO CLEANER - LIVE PROGRESS UPDATE
+Last Updated: {datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')}
+======================================================================
+Total Media Detected:   {total:,}
+Processed So Far:       {processed:,} ({pct:.1f}%)
+Remaining:              {rem_items:,}
+Processing Speed:       ~{speed:.1f} photos/sec
+Estimated Time Left:    ~{rem_mins:.1f} minutes
+
+CURRENT BREAKDOWN:
+  ⭐ Best Shots Kept in Library : {counts.get('BEST_SHOT', 0):,}
+  📦 Burst Alternatives Saved   : {counts.get(FOLDER_BURST_ALTS, 0):,}
+  💬 WhatsApp & Forwards        : {counts.get(FOLDER_WHATSAPP, 0):,}
+  📄 Receipts & Documents       : {counts.get(FOLDER_DOCUMENTS, 0):,}
+  📱 Screenshots                : {counts.get(FOLDER_SCREENSHOTS, 0):,}
+  🌑 Dark Pocket Shots          : {counts.get(FOLDER_DARK_POCKET, 0):,}
+  👯 Exact Duplicates           : {counts.get(FOLDER_DUPLICATES, 0):,}
+  🗑️ Clutter & Ads              : {counts.get(FOLDER_CLUTTER, 0):,}
+======================================================================
+Status: RUNNING SMOOTHLY (SQLite WAL checkpoint active)
+"""
+    try:
+        txt_path = output_dir / "progress_summary.txt"
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(summary_text)
+
+        json_path = output_dir / "progress_status.json"
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "timestamp": datetime.now().isoformat(),
+                "total": total,
+                "processed": processed,
+                "percent": round(pct, 1),
+                "speed_per_sec": round(speed, 1),
+                "eta_minutes": round(rem_mins, 1),
+                "counts": counts
+            }, f, indent=2)
+    except Exception:
+        pass
+
+
 def compute_md5(file_path: Path, chunk_size: int = 131072) -> str:
     """Compute fast MD5 hash of file."""
     h = hashlib.md5()
@@ -706,12 +778,23 @@ class PhotoCleanerEngine:
 
         return verdicts
 
-    def execute_routing(self, routing_map: dict[Path, str]):
-        """Safely move/copy files into categorized subfolders."""
+    def execute_routing(self, routing_map: dict[Path, str], total_files_count: int = 0):
+        """Safely move/copy files into categorized subfolders with live progress tracking and notifications."""
         print(f"\n📦 Executing safe file organization (Mode: {self.action.upper()})...")
         counts = defaultdict(int)
+        total_to_move = len(routing_map)
+        start_time = time.time()
+        last_notif_time = start_time
+        last_notif_count = 0
 
-        for src, dest_subfolder in routing_map.items():
+        # Initial notification on Mac
+        send_mac_notification(
+            title="Photo Cleaner v3.0",
+            subtitle="Processing Started 🚀",
+            message=f"Beginning curation of {total_files_count or total_to_move:,} photos and videos..."
+        )
+
+        for idx, (src, dest_subfolder) in enumerate(routing_map.items(), 1):
             if not src.exists():
                 continue
 
@@ -748,16 +831,53 @@ class PhotoCleanerEngine:
             )
             counts[dest_subfolder] += 1
 
+            # Update live progress file every 100 files
+            if idx % 100 == 0 or idx == total_to_move:
+                elapsed = time.time() - start_time
+                best_kept = total_files_count - total_to_move if total_files_count >= total_to_move else 0
+                display_counts = dict(counts)
+                display_counts["BEST_SHOT"] = best_kept
+                update_live_progress_file(self.output_dir, total_files_count or total_to_move, idx, display_counts, elapsed)
+
+            # Milestone Notification on Mac every 500 photos OR every 15 minutes
+            curr_time = time.time()
+            if (idx - last_notif_count >= 500) or (curr_time - last_notif_time >= 900):
+                pct = (idx / total_to_move) * 100.0 if total_to_move > 0 else 100.0
+                send_mac_notification(
+                    title="Photo Cleaner v3.0",
+                    subtitle=f"Milestone: {idx:,} / {total_to_move:,} ({pct:.0f}%)",
+                    message=f"Sorted {counts.get(FOLDER_BURST_ALTS, 0):,} burst alts, {counts.get(FOLDER_WHATSAPP, 0):,} WhatsApp items."
+                )
+                last_notif_time = curr_time
+                last_notif_count = idx
+
         # Generate Rollback script
         self.generate_undo_script()
+
+        # Final progress file update
+        elapsed_total = time.time() - start_time
+        best_kept = total_files_count - total_to_move if total_files_count >= total_to_move else 0
+        final_counts = dict(counts)
+        final_counts["BEST_SHOT"] = best_kept
+        update_live_progress_file(self.output_dir, total_files_count or total_to_move, total_to_move, final_counts, elapsed_total)
+
+        # Completion chime and notification
+        play_completion_chime()
+        send_mac_notification(
+            title="Photo Cleaner v3.0",
+            subtitle="Curation Complete! 🎉",
+            message=f"Successfully organized {total_files_count or total_to_move:,} photos. Your best memories are ready!"
+        )
 
         print("\n" + "=" * 65)
         print("📊 LOCAL AI PHOTO CLEANER v3.0 - EXECUTION SUMMARY")
         print("=" * 65)
         for folder, count in sorted(counts.items()):
             print(f"  📁 {folder:<28} : {count:,} items")
+        print(f"  ⭐ {'_BEST_SHOTS_IN_LIBRARY':<28} : {best_kept:,} items")
         print("=" * 65)
         print(f"💾 Checkpoint Database: {self.db_path}")
+        print(f"📄 Live Status Log:     {self.output_dir / 'progress_summary.txt'}")
         print(f"🔄 Rollback Script:     {self.output_dir / 'undo_cleaner.py'}")
 
     def generate_undo_script(self):
@@ -886,7 +1006,7 @@ def main():
             print(f"  -> {dest:<25}: {c:,} files")
         print(f"  -> Curated / Main Library : {len(unprocessed) - len(routing_map):,} files")
     else:
-        engine.execute_routing(routing_map)
+        engine.execute_routing(routing_map, total_files_count=len(unprocessed))
 
     print("\n✨ Done! Your curated photo library is clean, organized, and ready to enjoy.")
 
