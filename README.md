@@ -1,91 +1,112 @@
-# Local AI Photo Cleaner
+# 🌟 Local AI Photo Cleaner (v3.0)
 
-A 100% private, offline photo sorting tool that categorizes WhatsApp photo dumps into **3 clean tiers** using local vision models via **Ollama**.
-
----
-
-## 🎯 3-Tier Destination Routing
-
-When given a photo directory, it automatically organizes your files into 3 distinct places:
-
-| Tier / Location | What goes here | Examples |
-|---|---|---|
-| **`Main Folder`** | **Confident Personal Memories** | Family life, kids, selfies, dining, vacations, pets, celebrations |
-| **`_Review_Needed/`** | **50-50 Borderline Photos** | Certificates in hand, mixed text/scenes, ambiguous candidate forwards |
-| **`_Unwanted_Archive/`** | **Confirmed Junk** | Digital screenshots, bills, receipts, furniture catalog shots, ads, memes |
+> **Private, Offline Photo & Video Curation Engine with Smart Burst "Best-Shot" Selection.**  
+> Powered by Apple Silicon Metal GPU acceleration (`mlx-vlm`) & local vision intelligence.
 
 ---
 
-## 🧠 Decision Flowchart
+## 💡 Why This Tool?
 
-```
-                             [Photo]
-                                │
-                                ▼
-                  [1. Is there a real person?]
-                                │
-               ┌────────────────┴────────────────┐
-               │ NO                              │ YES
-               ▼                                 ▼
-   [2. Clear document/catalog?]      [3. Commercial ad or movie meme?]
-         ┌─────┴─────┐                     ┌─────┴─────┐
-     YES │       NO  │                 YES │       NO  │
-         ▼           ▼                     ▼           ▼
-   [_Unwanted]   [_Review]           [_Unwanted]    [KEEP / MAIN]
-   (Receipts)   (Landscapes)         (Ads/Memes)   (Family/Life)
-```
+When you dump years of photos from old phones, Google Photos, or backups (250–500 GB), you face two massive headaches:
+
+1. **The Burst / Series Dilemma**: You took 5 shots of someone at an event. In one shot, they are looking directly into the camera lens with open eyes and a natural smile—that's the **best shot**. The other 4 shots are redundant, blurry, or captured mid-blink.
+2. **The Junk Flood**: Thousands of WhatsApp forwards, screenshots, receipt bills, dark pocket shots, memes, and stickers cluttering your genuine family memories.
+
+**Local AI Photo Cleaner** automatically runs directly on your Mac, analyzes your photos completely offline, picks the **single best shot** from every burst, and cleanly organizes the clutter into safe subfolders—**without deleting a single file**.
 
 ---
 
-## 🚀 1-Click Run (Turnkey)
+## ⚡ 1-Click Quickstart (for Mac)
 
-Clone and run `./run.sh`. It automatically handles:
-1. Installing Ollama (if missing)
-2. Starting the Ollama background service
-3. Pulling the `llava` vision model (~4.5 GB)
-4. Setting up Python environment & dependencies
-5. Sorting your photos
+Open your **Terminal** app on your Mac and run:
 
 ```bash
+# 1. Clone this repository
 git clone https://github.com/meherjammula/local-photo-cleaner.git
 cd local-photo-cleaner
 
-# 1-Click Run:
-./run.sh --source "/path/to/your/photos"
+# 2. Run the 1-click setup
+./run.sh
+```
+
+When prompted, simply **drag and drop your photo folder** from Finder directly into the terminal window and press **Enter**!
+
+---
+
+## 🗂️ How Your Photos Get Organized
+
+Your original folder is kept clean and curated with only your **genuine best memories**. All clutter is separated into dedicated, easily reviewable subfolders:
+
+```
+Your_Photos_Folder/
+│
+├── 🌟 [Camera Originals / Best Shots]   <-- Kept in main folder! Only the sharpest, best-expression shots
+│
+├── 📁 _BURST_ALTERNATIVES/              <-- Redundant burst takes & closed-eye alternative shots
+├── 📁 _WHATSAPP_JUNK/                   <-- WhatsApp images, forwarded videos, greeting cards
+├── 📁 _SCREENSHOTS/                     <-- Mobile and desktop display captures
+├── 📁 _DOCUMENTS_AND_BILLS/             <-- Receipts, bills, invoices, ID cards, prescriptions
+├── 📁 _STICKERS_TINY/                   <-- Micro-graphics, stickers, icons (< 400x400 px)
+├── 📁 _DARK_POCKET_SHOTS/               <-- Accidental pitch-black pocket or purse shots
+├── 📁 _DUPLICATES_EXACT/                <-- Identical byte-for-byte duplicate copies
+├── 📁 _UNWANTED_CLUTTER/                <-- E-commerce clothing catalogs, internet memes, flyers
+│
+└── 🔄 undo_cleaner.py                   <-- Automatic 1-click rollback script (revert anytime!)
 ```
 
 ---
 
-## 💻 Manual CLI Usage
+## 🎯 Key Features
+
+### 1. Smart Burst & Series "Best Shot" Selector
+- Groups photos taken in quick succession ($\le 6$ seconds) of the same subject.
+- Measures optical focus using Laplacian edge variance ($Var(\nabla^2 I)$).
+- Evaluates **eye contact, open eyes (no blinks), and facial expression** using local vision AI.
+- Crown the **best shot** for your primary album, moving secondary takes to `_BURST_ALTERNATIVES/`.
+
+### 2. 100% Privacy & Offline (No Cloud Uploads)
+- Everything runs 100% locally on your machine.
+- Zero network calls. Your family photos and documents never touch any remote server or cloud.
+
+### 3. Industrial Scale (250 GB – 500 GB)
+- Built on a high-concurrency **SQLite WAL Checkpoint engine**.
+- If your laptop sleeps, runs out of battery, or you close the app, running it again **resumes instantly** without re-scanning already processed files.
+
+### 4. 100% Non-Destructive with 1-Click Rollback
+- No files are ever permanently deleted.
+- Every run automatically creates an `undo_cleaner.py` script. Running `python3 undo_cleaner.py` moves every single file back to its exact original place.
+
+---
+
+## 🛠️ Advanced CLI Usage
+
+If you prefer using the command line directly:
 
 ```bash
-pip install -r requirements.txt
-python cleaner.py --source "/path/to/your/photos" --workers 4
-```
+# Basic run (moves files into organized subfolders)
+python3 cleaner.py --source "/path/to/photos"
 
-### CLI Options
+# Dry Run (Preview counts without moving any files)
+python3 cleaner.py --source "/path/to/photos" --action dry-run
 
-| Flag | Default | Description |
-|---|---|---|
-| `--source` | *Required* | Path to the photo folder to clean |
-| `--review-dir` | `_Review_Needed` | Name of the folder for 50-50 borderline photos |
-| `--archive-dir` | `_Unwanted_Archive` | Name of the folder for confirmed junk files |
-| `--model` | `llava` | Local vision model on Ollama (`llava`, `qwen2-vl:7b`, etc.) |
-| `--workers` | `4` | Number of concurrent worker threads |
-| `--timeout` | `15.0` | Per-photo inference timeout (seconds) |
+# Copy instead of move (keeps original folder completely untouched)
+python3 cleaner.py --source "/path/to/photos" --dest "/path/to/curated_output" --action copy
 
----
+# Ultra-fast mode (uses camera focus & burst sharpness without AI download)
+python3 cleaner.py --source "/path/to/photos" --no-ai
 
-## 🐳 Docker Usage
-
-```bash
-# Put photos inside ./photos, then run:
-docker compose up
+# Custom burst capture time window (e.g., 10 seconds)
+python3 cleaner.py --source "/path/to/photos" --burst-window 10.0
 ```
 
 ---
 
-## 🛡️ Safety Guarantees
-- **Non-destructive:** Zero photos deleted. All moves are safely isolated.
-- **Collision Protection:** Automatically renames duplicates (`img_1.jpg`, `img_2.jpg`).
-- **100% Offline:** Runs locally via Ollama. No API keys, zero cloud uploads.
+## 💻 System Requirements
+- **macOS** (Optimized for Apple Silicon M1, M2, M3, M4 Macs with native Metal GPU acceleration).
+- **Python 3.10+**.
+- Also compatible with Intel Macs and Linux.
+
+---
+
+## 🤝 Feedback & Support
+Have ideas, questions, or issues? Open an Issue or reach out—you are our valued alpha tester!

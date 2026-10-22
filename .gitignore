@@ -2,3 +2,12 @@ __pycache__/
 *.pyc
 .DS_Store
 .venv/
+venv/
+*.db
+*.db-wal
+*.db-shm
+*.csv
+undo_cleaner.py
+test_data/
+output/
+*.log
